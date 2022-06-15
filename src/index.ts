@@ -9,7 +9,7 @@ interface Results {
     sunrise: string;
     sunset: string;
     solar_noon: string;
-    day_length: number
+    day_length: number;
     civil_twilight_begin: string;
     civil_twilight_end: string;
     nautical_twilight_begin: string;
@@ -53,16 +53,13 @@ async function fetchTwilightData(): Promise<Response[]> {
     for (let i = 0; i < coordinates.length; i += PARALLEL_CALLS) {
         const coordinatesToFetch = coordinates.slice(i, i + PARALLEL_CALLS)
 
-        // @TODO fix any
-        const responses: any[] = await Promise.all(
-            coordinatesToFetch.map(async ({lat, long}) => {
-                const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}lng=${long}&formatted=0`)
+        const promises = coordinatesToFetch.map(async ({lat, long}) => {
+            const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}lng=${long}&formatted=0`)
 
-                return res.json();
-            })
-        )
+            return (await res.json()) as Response;
+        })
 
-        data.push(...responses)
+        data.push(...await Promise.all(promises))
     }
 
     return data
@@ -82,7 +79,7 @@ function generateCoordinates(quantity: number): Coordinate[] {
 }
 
 function randomCoordinateFromRange(min: number, max: number): string {
-    return (Math.random() * (max - min + 1) + min).toFixed(COORDINATE_PRECISION);
+    return (Math.random() * (max - min) + min).toFixed(COORDINATE_PRECISION);
 }
 
 function convertSecondsToHours(seconds: number): string {
