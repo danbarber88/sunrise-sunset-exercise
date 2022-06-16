@@ -25,25 +25,25 @@ interface Coordinate {
 
 const COORDINATE_PRECISION = 7;
 const COORDINATE_QUANTITY = 100;
-
-const PARALLEL_CALLS = 5
+const PARALLEL_CALLS = 5;
 
 async function displayResult(): Promise<void> {
     const data = await findDataWithEarliestSunrise();
     const dayLength = convertSecondsToHours(data.results.day_length);
 
-    console.log(`Earliest sunrise day length: ${dayLength} hours`)
+    console.log(`Earliest sunrise day length: ${dayLength} hours`);
 }
 
 async function findDataWithEarliestSunrise(): Promise<Response> {
-    const data = await fetchTwilightData();
+    const twilightData = await fetchTwilightData();
 
-    return data.reduce((previousData, currentData) => {
-        const { sunrise: earliestSunrise } = previousData.results;
-        const { sunrise, day_length: dayLength } = currentData.results;
+    // The api is returning the unix epoch for all fields for some generated coordinates.
+    // I decided it would just be best to filter them out for now.
+    const sortedData = twilightData
+        .filter((data) => data.results.day_length > 0)
+        .sort((a, b) => a.results.sunrise.localeCompare(b.results.sunrise));
 
-        return dayLength === 0 || earliestSunrise < sunrise ? previousData : currentData
-    });
+    return sortedData[0];
 }
 
 async function fetchTwilightData(): Promise<Response[]> {
@@ -51,18 +51,16 @@ async function fetchTwilightData(): Promise<Response[]> {
     const data: Response[] = [];
 
     for (let i = 0; i < coordinates.length; i += PARALLEL_CALLS) {
-        const coordinatesToFetch = coordinates.slice(i, i + PARALLEL_CALLS)
+        const coordinatesToFetch = coordinates.slice(i, i + PARALLEL_CALLS);
 
-        const promises = coordinatesToFetch.map(async ({lat, long}) => {
-            const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}lng=${long}&formatted=0`)
+        const promises = coordinatesToFetch.map(({lat, long}) => fetch(`https://api.sunrise-sunset.org/json?lat=${lat}lng=${long}&formatted=0`));
+        const responses = await Promise.all(promises);
+        const toJsonPromises = responses.map((response) => response.json() as Promise<Response>);
 
-            return (await res.json()) as Response;
-        })
-
-        data.push(...await Promise.all(promises))
+        data.push(...await Promise.all(toJsonPromises));
     }
 
-    return data
+    return data;
 }
 
 function generateCoordinates(quantity: number): Coordinate[] {
@@ -72,10 +70,10 @@ function generateCoordinates(quantity: number): Coordinate[] {
         const lat = randomCoordinateFromRange(-90, 90);
         const long = randomCoordinateFromRange(-180, 180);
 
-        coordinates.push({lat, long})
+        coordinates.push({lat, long});
     }
 
-    return coordinates
+    return coordinates;
 }
 
 function randomCoordinateFromRange(min: number, max: number): string {
@@ -86,5 +84,5 @@ function convertSecondsToHours(seconds: number): string {
     return (seconds / 3600).toFixed(1);
 }
 
-console.log('Fetching results please wait...')
-console.log(await displayResult())
+console.log('Fetching results please wait...');
+console.log(await displayResult());
