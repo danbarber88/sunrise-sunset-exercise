@@ -23,6 +23,8 @@ interface Coordinate {
     long: string;
 }
 
+const SECONDS_IN_HOUR = 3600;
+const HOUR_PRECISION = 1;
 const COORDINATE_PRECISION = 7;
 const COORDINATE_QUANTITY = 100;
 const PARALLEL_CALLS = 5;
@@ -81,8 +83,8 @@ function randomCoordinateFromRange(min: number, max: number): string {
 }
 
 function convertSecondsToHours(seconds: number): string {
-    return (seconds / 3600).toFixed(1);
+    return (seconds / SECONDS_IN_HOUR).toFixed(HOUR_PRECISION);
 }
 
 console.log('Fetching results please wait...');
-console.log(await displayResult());
+await displayResult();
